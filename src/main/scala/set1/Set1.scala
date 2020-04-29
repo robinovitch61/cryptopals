@@ -73,16 +73,23 @@ class Set1 {
     numValidChars.toDouble / message.length() * 100 > 90
   }
 
-  def decodeSingleCharXor(hexMessage: String) = {
+  def decodeSingleCharXor(hexMessage: String): Unit = {
     val byteCode = hexToBytes(hexMessage)
 
     case class Result(num: Long, text: String)
-
     val results = for (i <- 33 until 128)
       yield Result(i, xorWithChar(byteCode, i.toChar))
 
     results.foreach(r => if (isMaybeAMessage(r.text.mkString)) {
       println(s"\n${r.num}, ${r.num.toChar}, ${r.text.mkString}\n")
     })
+  }
+
+  def encodeWithKeyXor(message: String, key: String): String = {
+    val repeatedKey = new StringBuilder
+    while (repeatedKey.length() < message.length()) {
+      repeatedKey.append(key)
+    }
+    bytesToHex(message.zip(repeatedKey).map{ case (a, b) => (a ^ b).toByte })
   }
 }
