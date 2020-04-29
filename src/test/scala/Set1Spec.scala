@@ -33,4 +33,18 @@ class Set1Spec extends FlatSpec {
     val output = "746865206b696420646f6e277420706c6179"
     assert (set1.fixedXor(input1, input2) == output)
   }
+
+  "decodeSingleCharXor" should "print the secret message" in {
+    val hexCode = "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"
+    val byteCode = set1.hexToBytes(hexCode)
+
+    case class Result(num: Long, text: String)
+
+    val results = for (i <- 0 until 128 if i.toChar != ' ')
+      yield Result(i, set1.xorWithChar(byteCode, i.toChar))
+
+    results.foreach(r => if (set1.isMaybeAMessage(r.text.mkString)) {
+      println(s"${r.num}, ${r.num.toChar}, ${r.text.mkString}")
+    })
+  }
 }
