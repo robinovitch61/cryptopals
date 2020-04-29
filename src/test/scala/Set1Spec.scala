@@ -1,5 +1,6 @@
 import org.scalatest._
-import cryptopals.set1.Set1
+import set1.Set1
+import scala.io.Source
 
 
 class Set1Spec extends FlatSpec {
@@ -34,17 +35,18 @@ class Set1Spec extends FlatSpec {
     assert (set1.fixedXor(input1, input2) == output)
   }
 
-  "decodeSingleCharXor" should "print the secret message" in {
+  "decodeSingleCharXor" should "find the secret message" in {
     val hexCode = "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"
-    val byteCode = set1.hexToBytes(hexCode)
-
-    case class Result(num: Long, text: String)
-
-    val results = for (i <- 0 until 128 if i.toChar != ' ')
-      yield Result(i, set1.xorWithChar(byteCode, i.toChar))
-
-    results.foreach(r => if (set1.isMaybeAMessage(r.text.mkString)) {
-      println(s"${r.num}, ${r.num.toChar}, ${r.text.mkString}")
-    })
+    set1.decodeSingleCharXor(hexCode)
   }
+
+  it should "find the secret message in all the options" in {
+    val bufferedSource = Source.fromFile("src/main/scala/set1/set1_challenge4.txt")
+    for (line <- bufferedSource.getLines) {
+      set1.decodeSingleCharXor(line)
+    }
+    bufferedSource.close
+  }
+
+
 }
