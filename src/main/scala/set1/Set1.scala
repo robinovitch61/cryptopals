@@ -1,5 +1,4 @@
 package set1
-
 import java.math.BigInteger
 import java.util.Base64
 
@@ -94,6 +93,11 @@ class Set1 {
       repeatedKey.append(key)
     }
     bytesToHex(message.zip(repeatedKey).map{ case (a, b) => (a ^ b).toByte })
+  }
+
+  def hammingDistance(first: String, second:String): Int = {
+    assert(first.length == second.length)
+    first.zip(second).map{ case (a, b) => (a ^ b).toBinaryString.count(_ == '1') }.sum
   }
 }
 
