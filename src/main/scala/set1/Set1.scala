@@ -3,7 +3,11 @@ package set1
 import java.math.BigInteger
 import java.util.Base64
 
+case class Result(num: Long, text: String, score: Double)
+
 class Set1 {
+  import Set1.alphabetMetric
+
   def returns1 = () => 1
 
   def hexToBytes(hex: String) = new BigInteger(hex, 16).toByteArray
@@ -58,31 +62,30 @@ class Set1 {
     helper(message, set, 0)
   }
 
-  def isMaybeAMessage(message: String): Boolean = {
-//    // Calculate the percentage of spaces in the line
-//    // Normal range ~[5, 20]
-//    val invalidChars = Array("\n", '[', ']', '~', '>', '<', '|')
-//    val numSpaces = charFrequency(message, ' ')
-//    val percentSpaces = numSpaces.toDouble / message.length * 100
-//    val validPercentSpaces = percentSpaces <= 20 && percentSpaces >= 5
-//    validPercentSpaces && !message.contains(invalidChars)
+  /**
+   Computes the sum of squares of the character frequencies
+   between ASCII characters [97, 122] (a-z lowercase)
 
-    // Better approach - percent of "normal" chars
-    val validChars = (('a' to 'z') ++ ('A' to 'Z') ++ ('0' to '9') ++ List(' ')).toSet
-    val numValidChars = numCharsInSet(message, validChars)
-    numValidChars.toDouble / message.length() * 100 > 90
+   More plain english messages will have lower scores.
+   */
+  def frequencyScore(message: String): Double = {
+    val chars = ('a' to 'z')
+    val sumOfSquareFrequencies = chars.map(char => {
+        math.pow(charFrequency(message, char).toDouble / message.length(), 2)
+      }).sum
+    math.abs(sumOfSquareFrequencies - alphabetMetric)
   }
 
-  def decodeSingleCharXor(hexMessage: String): Unit = {
+  def decodeSingleCharXor(hexMessage: String): Result = {
     val byteCode = hexToBytes(hexMessage)
 
-    case class Result(num: Long, text: String)
     val results = for (i <- 33 until 128)
-      yield Result(i, xorWithChar(byteCode, i.toChar))
+      yield {
+        val decoded = xorWithChar(byteCode, i.toChar)
+        Result(i, decoded, frequencyScore(decoded))
+      }
 
-    results.foreach(r => if (isMaybeAMessage(r.text.mkString)) {
-      println(s"\n${r.num}, ${r.num.toChar}, ${r.text.mkString}\n")
-    })
+    results.minBy(_.score)
   }
 
   def encodeWithKeyXor(message: String, key: String): String = {
@@ -92,4 +95,38 @@ class Set1 {
     }
     bytesToHex(message.zip(repeatedKey).map{ case (a, b) => (a ^ b).toByte })
   }
+}
+
+object Set1 {
+  val alphabetFreqMap = Map(
+    ('a', 8.497 / 100),
+    ('b', 1.492 / 100),
+    ('c', 2.202 / 100),
+    ('d', 4.253 / 100),
+    ('e', 11.16 / 100),
+    ('f', 2.228 / 100),
+    ('g', 2.015 / 100),
+    ('h', 6.094 / 100),
+    ('i', 7.546 / 100),
+    ('j', 0.153 / 100),
+    ('k', 1.292 / 100),
+    ('l', 4.025 / 100),
+    ('m', 2.406 / 100),
+    ('n', 6.749 / 100),
+    ('o', 7.507 / 100),
+    ('p', 1.929 / 100),
+    ('q', 0.095 / 100),
+    ('r', 7.587 / 100),
+    ('s', 6.327 / 100),
+    ('t', 9.356 / 100),
+    ('u', 2.758 / 100),
+    ('v', 0.978 / 100),
+    ('w', 2.560 / 100),
+    ('x', 0.150 / 100),
+    ('y', 1.994 / 100),
+    ('z', 0.077 / 100),
+  )
+
+  // sum of squared frequences of the lowercase letters in english language
+  val alphabetMetric = alphabetFreqMap.map(freq => math.pow(freq._2, 2)).sum
 }

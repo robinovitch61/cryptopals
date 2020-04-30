@@ -37,14 +37,13 @@ class Set1Spec extends FlatSpec {
 
   "decodeSingleCharXor" should "find the secret message" in {
     val hexCode = "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"
-    set1.decodeSingleCharXor(hexCode)
+    println("\n" + set1.decodeSingleCharXor(hexCode).text)
   }
 
   it should "find the secret message in all the options" in {
     val bufferedSource = Source.fromFile("src/main/scala/set1/set1_challenge4.txt")
-    for (line <- bufferedSource.getLines) {
-      set1.decodeSingleCharXor(line)
-    }
+    val results = for (line <- bufferedSource.getLines) yield set1.decodeSingleCharXor(line)
+    println("\n" + results.minBy(_.score).text)
     bufferedSource.close
   }
 
