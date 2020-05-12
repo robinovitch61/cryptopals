@@ -2,7 +2,7 @@ package set1
 import java.math.BigInteger
 import java.util.Base64
 
-case class SingleCharXorSingleCharXorResult(xorNum: Long, text: String, score: Double)
+case class SingleCharXorResult(xorNum: Long, text: String, score: Double)
 case class KeyScore(keySize: Int, score: Double)
 
 class Set1 {
@@ -81,13 +81,13 @@ class Set1 {
     math.abs(sumOfSquareFrequencies - alphabetMetric)
   }
 
-  def decodeSingleCharXor(hexMessage: String): SingleCharXorSingleCharXorResult = {
+  def decodeSingleCharXor(hexMessage: String): SingleCharXorResult = {
     val byteCode = hexToBytes(hexMessage)
 
     val results = for (i <- 33 until 128)
       yield {
         val decoded = xorWithChar(byteCode, i.toChar)
-        SingleCharXorSingleCharXorResult(i, decoded, frequencyScore(decoded))
+        SingleCharXorResult(i, decoded, frequencyScore(decoded))
       }
 
     results.minBy(_.score)
@@ -149,10 +149,25 @@ class Set1 {
     }
   }
 
+  def getEveryNthElement[T](seq: Seq[T], n: Int) = {
+    // https://stackoverflow.com/a/25227836
+    require(n > 0)
+    for (step <- Range(start=n - 1, end=seq.length, step=n))
+      yield seq(step)
+  }
+
   def getXorVigenereKeySize(encodedBytes: Seq[Byte]): Seq[KeyScore] = {
     (MinKeySize to MaxKeySize).map(keySize => {
       KeyScore(keySize, keySizeScore(encodedBytes, keySize))
     }).sortBy(_.score)
+  }
+  
+  def getXorVigenereKey(keySize: Int, encodedBytes: Seq[Byte]): String = {
+    (1 to keySize).map(offset => {
+      val block = getEveryNthElement(encodedBytes, offset)
+      val hexBlock = bytesToHex(block)
+      decodeSingleCharXor(hexBlock).xorNum.toChar
+    }).toString
   }
 
   def breakXorVigenere(encodedBase64: String): String = {

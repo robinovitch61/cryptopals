@@ -73,13 +73,35 @@ class Set1Spec extends FlatSpec {
     assert(set1.getChunk(text, 3, 2).mkString == "def")
   }
 
+  "getEveryNthElement" should "work" in {
+    val text = "abcdefg"
+    assert(set1.getEveryNthElement(text, 1).mkString == text)
+    assert(set1.getEveryNthElement(text, 2).mkString == "bdf")
+    assert(set1.getEveryNthElement(text, 3).mkString == "cf")
+    assert(set1.getEveryNthElement(text, 4).mkString == "d")
+    assert(set1.getEveryNthElement(text, 5).mkString == "e")
+    assert(set1.getEveryNthElement(text, 6).mkString == "f")
+    assert(set1.getEveryNthElement(text, 7).mkString == "g")
+  }
+
   "encodeWithXorVigenere" should "be 4 in a contrived example with keysize 4" in {
-    val plainText = "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal"
-    val key = "ICE"
-    val encodedBase64 = set1.hexToBase64(set1.encodeToHexWithXorVigenere(plainText, key))
+//    val plainText = "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal"
+//    val key = "ICE"
+//    val encodedBase64 = set1.hexToBase64(set1.encodeToHexWithXorVigenere(plainText, key))
+    val bufferedSource = Source.fromFile("src/main/scala/set1/set1_challenge6.txt")
+    val encodedBase64 = bufferedSource.getLines.mkString
+
+
+    val encodedBytes = set1.base64ToBytes(encodedBase64)
     println(encodedBase64)
-    println(set1.getXorVigenereKeySize(set1.base64ToBytes(encodedBase64)) mkString "\n")
+
+    val sortedKeys = set1.getXorVigenereKeySize(encodedBytes)
+    println(sortedKeys mkString "\n")
 //    assert(set1.getXorVigenereKeySize(encodedBase64) == 4)
+
+    sortedKeys.map(_.keySize).map(keySize => {
+      println(set1.getXorVigenereKey(keySize, encodedBytes))
+    })
   }
 
   "breakXorVigenere" should "break the code" in {
