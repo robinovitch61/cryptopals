@@ -2,16 +2,22 @@ package set1
 import java.math.BigInteger
 import java.util.Base64
 
-case class Result(num: Long, text: String, score: Double)
+case class SingleCharXorSingleCharXorResult(xorNum: Long, text: String, score: Double)
+case class KeyScore(keySize: Int, score: Double)
 
 class Set1 {
-  import Set1.alphabetMetric
+  import Set1.{alphabetMetric, MinKeySize, MaxKeySize}
 
   def returns1 = () => 1
 
-  def hexToBytes(hex: String) = new BigInteger(hex, 16).toByteArray
+  def hexToBytes(hex: String) = new BigInteger(hex, 16).toByteArray.toSeq
 
-  def bytesToBase64(bytes: Array[Byte]): String = Base64.getEncoder().encodeToString(bytes)
+  def bytesToBase64(bytes: Seq[Byte]): String = Base64.getEncoder().encodeToString(bytes.toArray)
+
+  def base64ToBytes(encodedBase64: String): Seq[Byte] = {
+    val cleaned = encodedBase64.map{ case '-' => '+'; case '_' => '/'; case c => c }
+    Base64.getDecoder().decode(cleaned)
+  }
 
   def bytesToHex(bytes: Seq[Byte]): String = {
     val sb = new StringBuilder
@@ -32,7 +38,7 @@ class Set1 {
     bytesToHex(xor)
   }
 
-  def xorWithChar(bytes: Array[Byte], char: Char): String = {
+  def xorWithChar(bytes: Seq[Byte], char: Char): String = {
     bytes.map( b => (b ^ char.toByte).toChar ).mkString
   }
 
@@ -75,29 +81,87 @@ class Set1 {
     math.abs(sumOfSquareFrequencies - alphabetMetric)
   }
 
-  def decodeSingleCharXor(hexMessage: String): Result = {
+  def decodeSingleCharXor(hexMessage: String): SingleCharXorSingleCharXorResult = {
     val byteCode = hexToBytes(hexMessage)
 
     val results = for (i <- 33 until 128)
       yield {
         val decoded = xorWithChar(byteCode, i.toChar)
-        Result(i, decoded, frequencyScore(decoded))
+        SingleCharXorSingleCharXorResult(i, decoded, frequencyScore(decoded))
       }
 
     results.minBy(_.score)
   }
 
-  def encodeWithKeyXor(message: String, key: String): String = {
+  def buildRepeatedKey(key: String, length: Int): String = {
     val repeatedKey = new StringBuilder
-    while (repeatedKey.length() < message.length()) {
+    while (repeatedKey.length() < length) {
       repeatedKey.append(key)
     }
+    repeatedKey.substring(0, length)
+  }
+
+  def encodeToHexWithXorVigenere(message: String, key: String): String = {
+    val repeatedKey = buildRepeatedKey(key, message.length())
     bytesToHex(message.zip(repeatedKey).map{ case (a, b) => (a ^ b).toByte })
   }
 
-  def hammingDistance(first: String, second:String): Int = {
+  def hammingDistance(first: Seq[Byte], second:Seq[Byte]): Int = {
     assert(first.length == second.length)
     first.zip(second).map{ case (a, b) => (a ^ b).toBinaryString.count(_ == '1') }.sum
+  }
+
+  def normalizedHammingDistance(first: Seq[Byte], second: Seq[Byte]): Double = {
+    hammingDistance(first, second).toDouble / first.size
+  }
+
+  def getChunk[T](seq: Seq[T], chunkSize: Int, chunkNum: Int): Seq[T] = {
+    // first chunk index 1
+    assert(chunkSize * chunkNum <= seq.size)
+    seq.slice(chunkSize * (chunkNum - 1), chunkSize * chunkNum)
+  }
+
+  def keySizeScore(bytes: Seq[Byte], keySize: Int): Double = {
+    if (keySize * 4 > bytes.size) {
+      Double.MaxValue
+    } else {
+      val firstChunk = getChunk(bytes, keySize, 1)
+      val secondChunk = getChunk(bytes, keySize, 2)
+      val thirdChunk = getChunk(bytes, keySize, 3)
+      val fourthChunk = getChunk(bytes, keySize, 4)
+
+      val score = normalizedHammingDistance(firstChunk, secondChunk)
+//      val score = (
+//        hammingDistance(firstChunk, secondChunk).toDouble / keySize
+//        + hammingDistance(firstChunk, thirdChunk).toDouble / keySize
+//        + hammingDistance(firstChunk, fourthChunk).toDouble / keySize
+//        + hammingDistance(secondChunk, thirdChunk).toDouble / keySize
+//        + hammingDistance(secondChunk, fourthChunk).toDouble / keySize
+//        + hammingDistance(thirdChunk, fourthChunk).toDouble / keySize
+//      ) / 6
+
+//      println()
+//      println(keySize)
+//      println(firstChunk, secondChunk)
+//      println(thirdChunk, fourthChunk)
+//      println(score)
+      score
+    }
+  }
+
+  def getXorVigenereKeySize(encodedBytes: Seq[Byte]): Seq[KeyScore] = {
+    (MinKeySize to MaxKeySize).map(keySize => {
+      KeyScore(keySize, keySizeScore(encodedBytes, keySize))
+    }).sortBy(_.score)
+  }
+
+  def breakXorVigenere(encodedBase64: String): String = {
+    // https://crypto.stackexchange.com/a/8118
+    val encodedBytes = base64ToBytes(encodedBase64)
+    println(encodedBytes)
+    val sortedKeySizes = getXorVigenereKeySize(encodedBytes)
+
+    "abc"
   }
 }
 
@@ -132,5 +196,9 @@ object Set1 {
   )
 
   // sum of squared frequences of the lowercase letters in english language
+  // https://www.youtube.com/watch?v=kfR1i4EKpos
   val alphabetMetric = alphabetFreqMap.map(freq => math.pow(freq._2, 2)).sum
+
+  val MinKeySize = 2
+  val MaxKeySize = 10
 }

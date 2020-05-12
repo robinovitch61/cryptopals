@@ -47,16 +47,42 @@ class Set1Spec extends FlatSpec {
     bufferedSource.close
   }
 
-  "encodeWithKeyXor" should "encode correctly" in {
+  "encodeToHexWithXorVigenere" should "encode correctly" in {
     val unencrypted = "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal"
     val key = "ICE"
     val output = "0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f"
-    assert(set1.encodeWithKeyXor(unencrypted, key) == output)
+    assert(set1.encodeToHexWithXorVigenere(unencrypted, key) == output)
   }
 
-  "hammingDistance" should "work correctly" in {
+  "hammingDistance" should "be 37 in the example given" in {
     val first = "this is a test"
     val second = "wokka wokka!!!"
-    assert(set1.hammingDistance(first, second) == 37)
+    assert(set1.hammingDistance(first.getBytes(), second.getBytes()) == 37)
+  }
+
+  "normalizedHammingDistance" should "be 37 / 14 in the example given" in {
+    val first = "this is a test"
+    val second = "wokka wokka!!!"
+    assert(set1.normalizedHammingDistance(first.getBytes(), second.getBytes()) == 37.0 / 14)
+  }
+
+  "getChunk" should "work" in {
+    val text = "abcdefg"
+    assert(set1.getChunk(text, 2, 1).mkString == "ab")
+    assert(set1.getChunk(text, 2, 2).mkString == "cd")
+    assert(set1.getChunk(text, 3, 2).mkString == "def")
+  }
+
+  "encodeWithXorVigenere" should "be 4 in a contrived example with keysize 4" in {
+    val plainText = "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal"
+    val key = "ICE"
+    val encodedBase64 = set1.hexToBase64(set1.encodeToHexWithXorVigenere(plainText, key))
+    println(encodedBase64)
+    println(set1.getXorVigenereKeySize(set1.base64ToBytes(encodedBase64)) mkString "\n")
+//    assert(set1.getXorVigenereKeySize(encodedBase64) == 4)
+  }
+
+  "breakXorVigenere" should "break the code" in {
+
   }
 }
