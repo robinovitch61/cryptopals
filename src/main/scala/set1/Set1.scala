@@ -50,7 +50,7 @@ class Set1 {
   )
   val ReasonableNumCharsBeforeSpace = 8
   val SpecialCharThreshold = 8
-  val SpecialCharAsciiSet = Set.range(33, 48).map(_.toChar)
+  val SpecialCharAsciiSet = Set.range(33, 48).map(_.toChar) ++ Set.range(123, 127).map(_.toChar)
 
   def returns1 = () => 1
 
@@ -158,8 +158,9 @@ class Set1 {
   def frequencyScore(message: String): Double = {
     if (allCharsInAsciiRange(message) & hasReasonableNumSpecialChars(message)) {
       val chars = ('a' to 'z')
+      val filteredMessage = message.replaceAll("[^a-z]","")
       val sumOfSquareFrequencies = chars.map(char => {
-        math.pow(charFrequency(message, char).toDouble / message.length(), 2)
+        math.pow(charFrequency(filteredMessage, char).toDouble / filteredMessage.length(), 2)
       }).sum
       math.abs(sumOfSquareFrequencies - alphabetMetric)
     } else {
@@ -177,7 +178,7 @@ class Set1 {
     } else {
       Double.MaxValue
     }
-    }
+  }
 
   def decodeSingleCharXor(byteMessage: Seq[Byte]): SingleCharXorResult = {
     val results = for (i <- MinAsciiPrintable to MaxAsciiPrintable)
@@ -185,6 +186,7 @@ class Set1 {
         val decoded = xorWithChar(byteMessage, i.toChar).map(_.toChar).mkString
         SingleCharXorResult(byteMessage, i, decoded, frequencyScore(decoded))
       }
+//    println(results.sortBy(_.score).take(5).map(char => (char.xorNum.toChar, char.text)))
     results.minBy(_.score)
   }
 
@@ -230,6 +232,11 @@ class Set1 {
     if (keySize * 8 > bytes.size) {
       Double.MaxValue
     } else {
+
+//      val firstChunk = getChunk(bytes, keySize, 1)
+//      val secondChunk = getChunk(bytes, keySize, 2)
+//      normalizedHammingDistance(firstChunk, secondChunk)
+
       var count = 1
       var score = 0.0
       val numChunks = math.floor(bytes.size / keySize).toInt
@@ -258,15 +265,16 @@ class Set1 {
   }
 
   def getXorVigenereKey(keySize: Int, encodedBytes: Seq[Byte]): String = {
-    (1 to keySize).map(offset => {
-      val truncatedBytes = encodedBytes.drop(offset - 1)
-      val block = getEveryNthElement(truncatedBytes, keySize)
+    (0 until keySize).map(offset => {
+      val droppedBytes = encodedBytes.drop(offset)
+      val block = getEveryNthElement(droppedBytes, keySize)
       decodeSingleCharXor(block).xorNum.toChar
     }).mkString
   }
 
 
   def breakXorVigenere(bytes: Seq[Byte], keySizeNum: Int = 3): Seq[DecodedResult] = {
+//    println(getSortedXorVigenereKeySizes(bytes).mkString("\n"))
     val sortedKeys = getSortedXorVigenereKeySizes(bytes).take(keySizeNum)
     sortedKeys.map(_.keySize).map(keySize => {
       val key = getXorVigenereKey(keySize, bytes)
