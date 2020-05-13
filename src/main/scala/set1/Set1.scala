@@ -39,8 +39,8 @@ class Set1 {
   // https://www.youtube.com/watch?v=kfR1i4EKpos
   val alphabetMetric = alphabetFreqMap.map(freq => math.pow(freq._2, 2)).sum
 
-  val MinKeySize = 2
-  val MaxKeySize = 3
+  val MinKeySize = 2 // 29
+  val MaxKeySize = 40
 
   val MinAsciiPrintable = 32
   val MaxAsciiPrintable = 126
@@ -48,6 +48,7 @@ class Set1 {
     10, // '\n'
   )
   val ReasonableNumCharsBeforeSpace = 8
+  val SpecialCharThreshold = 8
   val SpecialCharAsciiSet = Set.range(33, 48).map(_.toChar)
 
   def returns1 = () => 1
@@ -143,7 +144,7 @@ class Set1 {
     // disproportionately in (!, ", #, $, %...)
     if (message.length < 5) true else {
       val specialCharFreq = numCharsInSet(message, SpecialCharAsciiSet).toDouble / message.length
-      if (specialCharFreq > (1.0 / 5)) false else true
+      if (specialCharFreq > (1.0 / SpecialCharThreshold)) false else true
     }
   }
 
@@ -166,13 +167,23 @@ class Set1 {
   }
 
   def decodeSingleCharXor(byteMessage: Seq[Byte]): SingleCharXorResult = {
-    val results = for (i <- MinAsciiPrintable until MaxAsciiPrintable)
+    val results = for (i <- MinAsciiPrintable to MaxAsciiPrintable)
       yield {
         val decoded = xorWithChar(byteMessage, i.toChar).map(_.toChar).mkString
+//        if (i == 'E'.toChar) {
+//          println(decoded)
+//        }
         SingleCharXorResult(byteMessage, i, decoded, frequencyScore(decoded))
       }
 
-    val sortedResults = results.sortBy(_.score)
+//    if (results.minBy(_.score).xorNum == 61) {
+//      val decoded = xorWithChar(byteMessage, results.minBy(_.score).xorNum.toChar).map(_.toChar).mkString
+//      println(decoded)
+//      println(results.minBy(_.score).xorNum.toChar + "   ---   " + results.minBy(_.score).score)
+//      println(results.minBy(_.score))
+//    }
+
+//    val sortedResults = results.sortBy(_.score)
 //    sortedResults.map(result => println(result.xorNum.toChar + "   ---   " + result.score))
 
     results.minBy(_.score)
@@ -255,7 +266,6 @@ class Set1 {
     (1 to keySize).map(offset => {
       val truncatedBytes = encodedBytes.drop(offset - 1)
       val block = getEveryNthElement(truncatedBytes, keySize)
-      println(block)
       decodeSingleCharXor(block).xorNum.toChar
     }).mkString
   }
