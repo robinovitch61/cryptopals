@@ -21,30 +21,99 @@ class Set1Spec extends FlatSpec {
   "hexToBase64" should "convert example correctly" in {
     val input = "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d"
     val output = "SSdtIGtpbGxpbmcgeW91ciBicmFpbiBsaWtlIGEgcG9pc29ub3VzIG11c2hyb29t"
-    assert (set1.hexToBase64(input) == output)
+    assert(set1.hexToBase64(input) == output)
   }
 
   "bytesToHex" should "work" in {
     assert(set1.bytesToHex(Array(12.toByte, 13.toByte)) == "0c0d")
   }
 
+  "allCharsInAsciiRange" should "work correctly" in {
+    assert(set1.allCharsInAsciiRange("Now that the party is jumping"))
+    assert(set1.allCharsInAsciiRange("Now that the party is jumping" + set1.MaxAsciiPrintable.toChar))
+    assert(set1.allCharsInAsciiRange("Now that the party is jumping" + set1.MinAsciiPrintable.toChar))
+    assert(!set1.allCharsInAsciiRange("Now that the party is jumping" + (set1.MaxAsciiPrintable + 1).toChar))
+    assert(!set1.allCharsInAsciiRange("Now that the party is jumping" + (set1.MinAsciiPrintable - 1).toChar))
+  }
+
+  "hasReasonableNumberOfSpaces" should "work correctly" in {
+    val good = "A reasonable number of spaces in a sentence"
+    val bad = "Anunreasonableamountoftextbeforeaspace andsomemore"
+    assert(set1.hasReasonableNumberOfSpaces(good))
+    assert(!set1.hasReasonableNumberOfSpaces(bad))
+  }
+
+  "hasReasonableNumSpecialChars" should "work correctly" in {
+    val good = "A message with a r$%easonable number of !"
+    val bad = "T$#%oo M#!)ny!!!!!"
+    assert(set1.hasReasonableNumSpecialChars(good))
+    assert(!set1.hasReasonableNumSpecialChars(bad))
+  }
+
+  "frequencyScore" should "be smaller for more englishey things" in {
+    val best = "Hi there this is real english language!"
+    val worst = "asdfahgfdslkasdjgkljasdhflkjadsf;lkajsdf;lkajsd;glkja;dslfjk"
+    assert(set1.frequencyScore(best) < set1.frequencyScore(worst))
+  }
+
   "fixedXor" should "succeed" in {
     val input1 = "1c0111001f010100061a024b53535009181c"
     val input2 = "686974207468652062756c6c277320657965"
     val output = "746865206b696420646f6e277420706c6179"
-    assert (set1.fixedXor(input1, input2) == output)
+    assert(set1.fixedXor(input1, input2) == output)
+  }
+
+  "charFrequency" should "work correctly" in {
+    assert(set1.charFrequency("This has two", ' ') == 2)
+    assert(set1.charFrequency("Thishas one", ' ') == 1)
+    assert(set1.charFrequency("Thishasnone", ' ') == 0)
+    val weird = Vector(119, 107, 34, 41, 99, 106, 100, 34, 116, 102, 100, 37, 104, 96, 37, 37, 100, 37, 96, 76, 96, 37, 102, 103).map(_.toChar).mkString
+    assert(set1.charFrequency(weird, ' ') == 0)
+  }
+
+  "numCharsInSet" should "work correctly" in {
+    val message = "This is a message"
+    val set = Set('m', 's')
+    assert(set1.numCharsInSet(message, set) == 5)
   }
 
   "decodeSingleCharXor" should "find the secret message" in {
     val hexCode = "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"
-    println("\n" + set1.decodeSingleCharXor(hexCode).text)
+    val result = set1.decodeSingleCharXor(set1.hexToBytes(hexCode))
+    println("\n" + result.xorNum.toChar + "\n" + result.text)
+    val encodedBytes = set1.xorWithChar(result.text.getBytes, result.xorNum.toChar)
+    val encodedHex = set1.bytesToHex(encodedBytes)
+    assert(encodedHex == hexCode)
   }
 
   it should "find the secret message in all the options" in {
     val bufferedSource = Source.fromFile("src/main/scala/set1/set1_challenge4.txt")
-    val results = for (line <- bufferedSource.getLines) yield set1.decodeSingleCharXor(line)
-    println("\n" + results.minBy(_.score).text)
+    val results = for (line <- bufferedSource.getLines)
+      yield set1.decodeSingleCharXor(set1.hexToBytes(line))
+    val likelyResult = results.minBy(_.score)
+    println("\n" + likelyResult.xorNum.toChar + "\n" + likelyResult.text)
+
+    val encodedBytes = set1.xorWithChar(likelyResult.text.getBytes, likelyResult.xorNum.toChar)
+    val encodedHex = set1.bytesToHex(encodedBytes)
+    assert(encodedHex == set1.bytesToHex(likelyResult.encoded))
+
     bufferedSource.close
+  }
+
+  "buildRepeatedKey" should "work" in {
+    val key = "ICE"
+    val message = "ICEICEBABY"
+    val repeatedKey = set1.buildRepeatedKey(key, message.length)
+    assert(repeatedKey == "ICEICEICEI")
+  }
+
+  "xorWithKey" should "be reversible" in {
+    val key = "ICE"
+    val message = "This should be the same after being xor'd with the key twice"
+    val encodedOnce = set1.xorWithKey(message.getBytes(), key)
+    val encodedTwice = set1.xorWithKey(encodedOnce, key)
+    val stringified = encodedTwice.map(_.toChar).mkString
+    assert(stringified == message)
   }
 
   "encodeToHexWithXorVigenere" should "encode correctly" in {
@@ -76,32 +145,46 @@ class Set1Spec extends FlatSpec {
   "getEveryNthElement" should "work" in {
     val text = "abcdefg"
     assert(set1.getEveryNthElement(text, 1).mkString == text)
-    assert(set1.getEveryNthElement(text, 2).mkString == "bdf")
-    assert(set1.getEveryNthElement(text, 3).mkString == "cf")
-    assert(set1.getEveryNthElement(text, 4).mkString == "d")
-    assert(set1.getEveryNthElement(text, 5).mkString == "e")
-    assert(set1.getEveryNthElement(text, 6).mkString == "f")
-    assert(set1.getEveryNthElement(text, 7).mkString == "g")
+    assert(set1.getEveryNthElement(text, 2).mkString == "aceg")
+    assert(set1.getEveryNthElement(text, 3).mkString == "adg")
+    assert(set1.getEveryNthElement(text, 4).mkString == "ae")
+    assert(set1.getEveryNthElement(text, 5).mkString == "af")
+    assert(set1.getEveryNthElement(text, 6).mkString == "ag")
+    assert(set1.getEveryNthElement(text, 7).mkString == "a")
+    assert(set1.getEveryNthElement(text, 8).mkString == "a")
   }
 
   "encodeWithXorVigenere" should "be 4 in a contrived example with keysize 4" in {
-//    val plainText = "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal"
-//    val key = "ICE"
-//    val encodedBase64 = set1.hexToBase64(set1.encodeToHexWithXorVigenere(plainText, key))
-    val bufferedSource = Source.fromFile("src/main/scala/set1/set1_challenge6.txt")
-    val encodedBase64 = bufferedSource.getLines.mkString
-
-
+    val plainText = "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal"
+    val key = "ICE"
+    val encodedHex = set1.encodeToHexWithXorVigenere(plainText, key)
+    println(encodedHex)
+    val encodedBase64 = set1.hexToBase64(encodedHex)
+//    val bufferedSource = Source.fromFile("src/main/scala/set1/set1_challenge6.txt")
+//    val encodedBase64 = bufferedSource.getLines.mkString
+//    println(encodedBase64)
     val encodedBytes = set1.base64ToBytes(encodedBase64)
-    println(encodedBase64)
+    println(encodedBytes.length + "\n" + encodedBytes + "\n")
 
     val sortedKeys = set1.getXorVigenereKeySize(encodedBytes)
     println(sortedKeys mkString "\n")
 //    assert(set1.getXorVigenereKeySize(encodedBase64) == 4)
 
     sortedKeys.map(_.keySize).map(keySize => {
-      println(set1.getXorVigenereKey(keySize, encodedBytes))
+      println("\n" + keySize)
+      val key = set1.getXorVigenereKey(keySize, encodedBytes)
+      println(key)
+//      println(set1.xorWithKey(encodedBytes, key).map(_.toChar).mkString)
     })
+  }
+
+  "test" should "work" in {
+//    val block = Vector(11, 39, 46, 44, 105, 105, 60, 32, 61, 60, 34, 39, 39, 43, 67, 46, 42, 51, 62, 39, 105, 40, 40, 48, 40).map(_.toByte) // I
+//    val block = Vector(54, 42, 99, 46, 42, 58, 99, 45, 99, 42, 99, 39, 42, 47, 10, 44, 49, 58, 43, 99, 43, 49, 99, 46, 47).map(_.toByte) // C
+    val block = Vector(55, 43, 98, 105, 35, 42, 36, 98, 52, 38, 36, 101, 40, 32, 101, 101, 36, 101, 32, 12, 32, 101, 38, 39).map(_.toByte) // E
+    println(set1.hasReasonableNumberOfSpaces(block.map(_.toChar).mkString))
+    println(set1.xorWithChar(block, '@'))
+    println(set1.xorWithChar(block, '@').map(_.toChar).mkString)
   }
 
   "breakXorVigenere" should "break the code" in {
