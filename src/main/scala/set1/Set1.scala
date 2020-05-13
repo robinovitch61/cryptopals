@@ -4,6 +4,7 @@ import java.util.Base64
 
 case class SingleCharXorResult(encoded: Seq[Byte], xorNum: Long, text: String, score: Double)
 case class KeyScore(keySize: Int, score: Double)
+case class DecodedResult(key: String, text: String)
 
 class Set1 {
   val alphabetFreqMap = Map(
@@ -182,22 +183,8 @@ class Set1 {
     val results = for (i <- MinAsciiPrintable to MaxAsciiPrintable)
       yield {
         val decoded = xorWithChar(byteMessage, i.toChar).map(_.toChar).mkString
-//        if (i == 'I'.toChar) {
-//          println(decoded)
-//        }
         SingleCharXorResult(byteMessage, i, decoded, frequencyScore(decoded))
       }
-
-//    if (results.minBy(_.score).xorNum == 61) {
-//      val decoded = xorWithChar(byteMessage, results.minBy(_.score).xorNum.toChar).map(_.toChar).mkString
-//      println(decoded)
-//      println(results.minBy(_.score).xorNum.toChar + "   ---   " + results.minBy(_.score).score)
-//      println(results.minBy(_.score))
-//    }
-
-//    val sortedResults = results.sortBy(_.score)
-//    sortedResults.map(result => println(result.xorNum.toChar + "   ---   " + result.score + "   ---   " + result.text))
-
     results.minBy(_.score)
   }
 
@@ -238,18 +225,15 @@ class Set1 {
   }
 
   def keySizeScore(bytes: Seq[Byte], keySize: Int): Double = {
+    // https://crypto.stackexchange.com/a/8118
     // require some minimum number of chunks to average
     if (keySize * 8 > bytes.size) {
       Double.MaxValue
     } else {
-//      val firstChunk = getChunk(bytes, keySize, 1)
-//      val secondChunk = getChunk(bytes, keySize, 2)
-//      val thirdChunk = getChunk(bytes, keySize, 3)
-//      val fourthChunk = getChunk(bytes, keySize, 4)
-
       var count = 1
       var score = 0.0
       val numChunks = math.floor(bytes.size / keySize).toInt
+      // average pair-wise keySize-length groups of bytes' normalized hamming distance
       while (count < numChunks - 1) {
         val firstChunk = getChunk(bytes, keySize, count)
         val secondChunk = getChunk(bytes, keySize, count + 1)
@@ -257,39 +241,6 @@ class Set1 {
         count += 1
       }
       score / count
-
-//      var count = 1
-//      var score = 0.0
-//      val numChunks = math.floor(bytes.size / keySize).toInt
-//      for (ii <- 1 to numChunks;
-//           jj <- 2 to numChunks) {
-//        val firstChunk = getChunk(bytes, keySize, ii)
-//        val secondChunk = getChunk(bytes, keySize, jj)
-//        score += normalizedHammingDistance(firstChunk, secondChunk)
-//        count += 1
-//      }
-//      score / count
-
-//      val score = normalizedHammingDistance(firstChunk, secondChunk)
-//      println("\n" + keySize)
-//      println(formattedBinaryString(firstChunk, keySize * 8))
-//      println(formattedBinaryString(secondChunk, keySize * 8))
-//      println(score)
-//      val score = (
-//        hammingDistance(firstChunk, secondChunk).toDouble
-//        + hammingDistance(firstChunk, thirdChunk).toDouble
-//        + hammingDistance(firstChunk, fourthChunk).toDouble
-//        + hammingDistance(secondChunk, thirdChunk).toDouble
-//        + hammingDistance(secondChunk, fourthChunk).toDouble
-//        + hammingDistance(thirdChunk, fourthChunk).toDouble
-//      ) / 6 / keySize
-
-//      println()
-//      println(keySize)
-//      println(firstChunk, secondChunk)
-//      println(thirdChunk, fourthChunk)
-//      println(score)
-//      score
     }
   }
 
@@ -300,27 +251,26 @@ class Set1 {
       yield seq(step)
   }
 
-  def getXorVigenereKeySize(encodedBytes: Seq[Byte]): Seq[KeyScore] = {
+  def getSortedXorVigenereKeySizes(encodedBytes: Seq[Byte]): Seq[KeyScore] = {
     (MinKeySize to MaxKeySize).map(keySize => {
       KeyScore(keySize, keySizeScore(encodedBytes, keySize))
     }).sortBy(_.score)
   }
-  
+
   def getXorVigenereKey(keySize: Int, encodedBytes: Seq[Byte]): String = {
     (1 to keySize).map(offset => {
       val truncatedBytes = encodedBytes.drop(offset - 1)
       val block = getEveryNthElement(truncatedBytes, keySize)
-//      println("\n\n\n\n\n\n" + decodeSingleCharXor(block).xorNum.toChar)
       decodeSingleCharXor(block).xorNum.toChar
     }).mkString
   }
 
-//  def breakXorVigenere(encodedBase64: String): String = {
-//    // https://crypto.stackexchange.com/a/8118
-//    val encodedBytes = base64ToBytes(encodedBase64)
-//    println(encodedBytes)
-//    val sortedKeySizes = getXorVigenereKeySize(encodedBytes)
-//
-//    "abc"
-//  }
+
+  def breakXorVigenere(bytes: Seq[Byte], keySizeNum: Int = 3): Seq[DecodedResult] = {
+    val sortedKeys = getSortedXorVigenereKeySizes(bytes).take(keySizeNum)
+    sortedKeys.map(_.keySize).map(keySize => {
+      val key = getXorVigenereKey(keySize, bytes)
+      DecodedResult(key, xorWithKey(bytes, key).map(_.toChar).mkString)
+    })
+  }
 }
