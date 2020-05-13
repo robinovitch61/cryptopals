@@ -88,7 +88,7 @@ class Set1 {
   def charFrequency(message: String, char: Char): Long = {
     def helper(message: String, char: Char, count: Long): Long = {
       if (message.isEmpty) count else {
-        message.head match {
+        message.head.toLower match { // case insensitive
           case `char` => helper(message.tail, char, count + 1)
           case _ => helper(message.tail, char, count)
         }
@@ -166,6 +166,18 @@ class Set1 {
     }
   }
 
+  def chiSquaredScore(message: String): Double = {
+    if (allCharsInAsciiRange(message) & hasReasonableNumSpecialChars(message)) {
+      ('a' to 'z').map(char => {
+        val expectedFreq = alphabetFreqMap(char) * message.length
+        val messageFreq = charFrequency(message, char)
+        math.pow(messageFreq - expectedFreq, 2) / expectedFreq
+      }).sum
+    } else {
+      Double.MaxValue
+    }
+    }
+
   def decodeSingleCharXor(byteMessage: Seq[Byte]): SingleCharXorResult = {
     val results = for (i <- MinAsciiPrintable to MaxAsciiPrintable)
       yield {
@@ -221,31 +233,49 @@ class Set1 {
     seq.slice(chunkSize * (chunkNum - 1), chunkSize * chunkNum)
   }
 
+  def formattedBinaryString(bytes: Seq[Byte], length: Int): String = {
+    String.format(s"%${length}s", bytes.map(_.toBinaryString).mkString).replace(' ', '0')
+  }
+
   def keySizeScore(bytes: Seq[Byte], keySize: Int): Double = {
     if (keySize * 4 > bytes.size) {
       Double.MaxValue
     } else {
-      val firstChunk = getChunk(bytes, keySize, 1)
-      val secondChunk = getChunk(bytes, keySize, 2)
-      val thirdChunk = getChunk(bytes, keySize, 3)
-      val fourthChunk = getChunk(bytes, keySize, 4)
+//      val firstChunk = getChunk(bytes, keySize, 1)
+//      val secondChunk = getChunk(bytes, keySize, 2)
+//      val thirdChunk = getChunk(bytes, keySize, 3)
+//      val fourthChunk = getChunk(bytes, keySize, 4)
 
-      val score = normalizedHammingDistance(firstChunk, secondChunk)
+      var count = 1
+      var score = 0.0
+      while (keySize * (count + 1) < bytes.size) {
+        val firstChunk = getChunk(bytes, keySize, count)
+        val secondChunk = getChunk(bytes, keySize, count + 1)
+        score = score + normalizedHammingDistance(firstChunk, secondChunk)
+        count += 1
+      }
+      score / count
+
+//      val score = normalizedHammingDistance(firstChunk, secondChunk)
+//      println("\n" + keySize)
+//      println(formattedBinaryString(firstChunk, keySize * 8))
+//      println(formattedBinaryString(secondChunk, keySize * 8))
+//      println(score)
 //      val score = (
-//        hammingDistance(firstChunk, secondChunk).toDouble / keySize
-//        + hammingDistance(firstChunk, thirdChunk).toDouble / keySize
-//        + hammingDistance(firstChunk, fourthChunk).toDouble / keySize
-//        + hammingDistance(secondChunk, thirdChunk).toDouble / keySize
-//        + hammingDistance(secondChunk, fourthChunk).toDouble / keySize
-//        + hammingDistance(thirdChunk, fourthChunk).toDouble / keySize
-//      ) / 6
+//        hammingDistance(firstChunk, secondChunk).toDouble
+//        + hammingDistance(firstChunk, thirdChunk).toDouble
+//        + hammingDistance(firstChunk, fourthChunk).toDouble
+//        + hammingDistance(secondChunk, thirdChunk).toDouble
+//        + hammingDistance(secondChunk, fourthChunk).toDouble
+//        + hammingDistance(thirdChunk, fourthChunk).toDouble
+//      ) / 6 / keySize
 
 //      println()
 //      println(keySize)
 //      println(firstChunk, secondChunk)
 //      println(thirdChunk, fourthChunk)
 //      println(score)
-      score
+//      score
     }
   }
 

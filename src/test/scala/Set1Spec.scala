@@ -162,6 +162,7 @@ class Set1Spec extends FlatSpec {
 //    val encodedHex = set1.encodeToHexWithXorVigenere(plainText, key)
 //    println(encodedHex)
 //    val encodedBase64 = set1.hexToBase64(encodedHex)
+
     val bufferedSource = Source.fromFile("src/main/scala/set1/set1_challenge6.txt")
     val encodedBase64 = bufferedSource.getLines.mkString
     println(encodedBase64)
@@ -170,13 +171,13 @@ class Set1Spec extends FlatSpec {
 
     val sortedKeys = set1.getXorVigenereKeySize(encodedBytes)
     println(sortedKeys mkString "\n")
-//    assert(set1.getXorVigenereKeySize(encodedBase64) == 4)
 
-    sortedKeys.map(_.keySize).map(keySize => {
+    sortedKeys.take(3).map(_.keySize).map(keySize => {
       println("\n" + keySize)
       val key = set1.getXorVigenereKey(keySize, encodedBytes)
       println(key)
-//      println(set1.xorWithKey(encodedBytes, key).map(_.toChar).mkString)
+      println(set1.xorWithKey(encodedBytes, key).map(_.toChar).mkString)
+      println(set1.xorWithKey(encodedBytes, key).map(_.toChar).mkString)
     })
   }
 
