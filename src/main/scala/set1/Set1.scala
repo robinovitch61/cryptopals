@@ -39,7 +39,7 @@ class Set1 {
   // https://www.youtube.com/watch?v=kfR1i4EKpos
   val alphabetMetric = alphabetFreqMap.map(freq => math.pow(freq._2, 2)).sum
 
-  val MinKeySize = 2 // 29
+  val MinKeySize = 2
   val MaxKeySize = 40
 
   val MinAsciiPrintable = 32
@@ -88,7 +88,7 @@ class Set1 {
   def charFrequency(message: String, char: Char): Long = {
     def helper(message: String, char: Char, count: Long): Long = {
       if (message.isEmpty) count else {
-        message.head.toLower match { // case insensitive
+        message.head match {
           case `char` => helper(message.tail, char, count + 1)
           case _ => helper(message.tail, char, count)
         }
@@ -182,7 +182,7 @@ class Set1 {
     val results = for (i <- MinAsciiPrintable to MaxAsciiPrintable)
       yield {
         val decoded = xorWithChar(byteMessage, i.toChar).map(_.toChar).mkString
-//        if (i == 'E'.toChar) {
+//        if (i == 'I'.toChar) {
 //          println(decoded)
 //        }
         SingleCharXorResult(byteMessage, i, decoded, frequencyScore(decoded))
@@ -196,7 +196,7 @@ class Set1 {
 //    }
 
 //    val sortedResults = results.sortBy(_.score)
-//    sortedResults.map(result => println(result.xorNum.toChar + "   ---   " + result.score))
+//    sortedResults.map(result => println(result.xorNum.toChar + "   ---   " + result.score + "   ---   " + result.text))
 
     results.minBy(_.score)
   }
@@ -238,7 +238,8 @@ class Set1 {
   }
 
   def keySizeScore(bytes: Seq[Byte], keySize: Int): Double = {
-    if (keySize * 4 > bytes.size) {
+    // require some minimum number of chunks to average
+    if (keySize * 8 > bytes.size) {
       Double.MaxValue
     } else {
 //      val firstChunk = getChunk(bytes, keySize, 1)
@@ -248,13 +249,26 @@ class Set1 {
 
       var count = 1
       var score = 0.0
-      while (keySize * (count + 1) < bytes.size) {
+      val numChunks = math.floor(bytes.size / keySize).toInt
+      while (count < numChunks - 1) {
         val firstChunk = getChunk(bytes, keySize, count)
         val secondChunk = getChunk(bytes, keySize, count + 1)
         score = score + normalizedHammingDistance(firstChunk, secondChunk)
         count += 1
       }
       score / count
+
+//      var count = 1
+//      var score = 0.0
+//      val numChunks = math.floor(bytes.size / keySize).toInt
+//      for (ii <- 1 to numChunks;
+//           jj <- 2 to numChunks) {
+//        val firstChunk = getChunk(bytes, keySize, ii)
+//        val secondChunk = getChunk(bytes, keySize, jj)
+//        score += normalizedHammingDistance(firstChunk, secondChunk)
+//        count += 1
+//      }
+//      score / count
 
 //      val score = normalizedHammingDistance(firstChunk, secondChunk)
 //      println("\n" + keySize)
@@ -296,6 +310,7 @@ class Set1 {
     (1 to keySize).map(offset => {
       val truncatedBytes = encodedBytes.drop(offset - 1)
       val block = getEveryNthElement(truncatedBytes, keySize)
+//      println("\n\n\n\n\n\n" + decodeSingleCharXor(block).xorNum.toChar)
       decodeSingleCharXor(block).xorNum.toChar
     }).mkString
   }

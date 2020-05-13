@@ -165,6 +165,7 @@ class Set1Spec extends FlatSpec {
 
     val bufferedSource = Source.fromFile("src/main/scala/set1/set1_challenge6.txt")
     val encodedBase64 = bufferedSource.getLines.mkString
+
     println(encodedBase64)
     val encodedBytes = set1.base64ToBytes(encodedBase64)
     println(encodedBytes.length + "\n" + encodedBytes + "\n")
@@ -176,7 +177,6 @@ class Set1Spec extends FlatSpec {
       println("\n" + keySize)
       val key = set1.getXorVigenereKey(keySize, encodedBytes)
       println(key)
-      println(set1.xorWithKey(encodedBytes, key).map(_.toChar).mkString)
       println(set1.xorWithKey(encodedBytes, key).map(_.toChar).mkString)
     })
   }
